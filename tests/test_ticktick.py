@@ -28,3 +28,13 @@ def test_fetch():
     tt.fetch(datetime(2018, 10, 1), datetime(2018, 10, 31), 50)
     assert len(tt.tasks) > 0
     assert len(tt.tasks) == len(tt.completed) +  len(tt.uncompleted)
+
+def test_add_delete():
+    tt = TickTick(
+        username=os.environ['TICKTICK_USERNAME'],
+        password=os.environ['TICKTICK_PASSWORD'],
+    )
+    task_id = tt.add('API add test')
+    assert len(task_id) == 24
+    assert tt.guess_timezone() == 'Asia/Shanghai'
+    tt.delete(task_id, tt.inbox.id)

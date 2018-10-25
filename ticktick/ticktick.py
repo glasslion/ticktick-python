@@ -5,11 +5,16 @@ from datetime import datetime
 from addict import Dict
 import arrow
 import requests
+import six
 from six.moves.urllib.parse import urlencode
+
+from .objectid import ObjectId
 
 
 LOGIN_URL = 'https://ticktick.com/api/v2/user/signon?wc=true&remember=true'
 BATCH_CHECK_URL = 'https://ticktick.com/api/v2/batch/check/0'
+BATCH_TASK_URL = 'https://api.ticktick.com/api/v2/batch/task'
+TASK_URL = 'https://api.ticktick.com/api/v2/task'
 ALL_COMPLETED_URL = 'https://api.ticktick.com/api/v2/project/all/completedInAll/'
 
 TIME_FORMAT = '%Y-%m-%d %H:%M:%S'
@@ -30,7 +35,7 @@ class TickTask(Dict):
         MARGIN = '   '
 
         text = '{state} {title}'.format(
-            state=COMPLETED if self.completed else UNCOMPLETED,
+            state=COMPLETED if self.is_completed else UNCOMPLETED,
             title=self.title,
         )
 
@@ -41,10 +46,14 @@ class TickTask(Dict):
             text += MARGIN + ' '.join(TAG+tag for tag in self.tags)
 
         if show_subs and self.subtasks:
-            sub_texts = [MARGIN + item.text_view() for item in self.subtasks]
+            sub_texts = [MARGIN + item.text_view() for item in self.subtasks if item.title]
             text += '\n'+ '\n'.join(sub_texts)
         return text
 
+    @property
+    def is_completed(self):
+        # Status: 0 uncompleted, 1 subtask completed, 2 completed
+        return self.status > 0
 
 
 class TickTick(object):
@@ -81,17 +90,16 @@ class TickTick(object):
 
         self.lists = [Dict(item) for item in data['projectProfiles']]
         self.list_lookup = {item.id:item for item in self.lists}
-        inbox = Dict({
+        self.inbox = Dict({
             'id': data['inboxId'],
             'name': 'Inbox',
             'sortOrder': 0,
         })
-        self.list_lookup[inbox.id] = inbox
+        self.list_lookup[self.inbox.id] = self.inbox
 
         self.tags = [Dict(item) for item in data['tags']]
         self.uncompleted = [TickTask(item) for item in data['syncTaskBean']['update']]
         for item in self.uncompleted:
-            item.completed = False
             self.populate_task(item)
 
     def fetch_completed(self, from_, to, limit):
@@ -106,7 +114,6 @@ class TickTick(object):
         data = r.json()
         self.completed = [TickTask(item) for item in data]
         for item in self.completed:
-            item.completed = True
             self.populate_task(item)
 
     def query(self, filter=None, order_by=None):
@@ -134,7 +141,7 @@ class TickTick(object):
     def query_today(self):
         def filter(task):
             today = arrow.now().floor('day').to('local').datetime.replace(tzinfo=None)
-            if task.completed:
+            if task.is_completed:
                 if task.completedTime > today:
                     return True
                 else:
@@ -144,3 +151,42 @@ class TickTick(object):
             return False
         return self.query(filter)
 
+    def guess_timezone(self):
+        """
+        Guess user timezone from existing tasks
+        """
+        for task in self.tasks:
+            if task.timeZone:
+                return task.timeZone
+
+    def get_list_id(self, name):
+        for lst in self.lists:
+            if lst.name == name:
+                return lst.id
+
+    def add(self, title, list_name=None, extra_kwargs=None):
+        if not hasattr(self, 'tasks'):
+            self.fetch()
+        if list_name:
+            list_id = self.get_list_id(name=list_name)
+        else:
+            list_id = self.inbox.id
+        task_id = str(ObjectId())
+        task = {
+            'title': title,
+            'timeZone': self.guess_timezone(),
+            'id': task_id,
+            'projectId': list_id,
+        }
+        if extra_kwargs:
+            task.update(extra_kwargs)
+        data = {'add': [task]}
+        r = self._session.post(BATCH_TASK_URL, json=data)
+        return task_id
+
+    def delete(self, task_id, list_id):
+        task = {
+            'taskId': task_id,
+            'projectId': list_id,
+        }
+        r = self._session.delete(TASK_URL, json=[task])
