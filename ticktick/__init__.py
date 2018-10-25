@@ -5,3 +5,5 @@
 __author__ = """Leo Zhou"""
 __email__ = 'glasslion@gmail.com'
 __version__ = '0.1.0'
+
+from .ticktick import TickTick
