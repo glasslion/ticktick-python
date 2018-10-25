@@ -14,7 +14,7 @@ def test_login():
     tt = TickTick(
         username=os.environ['TICKTICK_USERNAME'],
         password=os.environ['TICKTICK_PASSWORD'],
-        auto_logion=False,
+        auto_login=False,
     )
     r = tt._login()
     assert r.status_code == 200

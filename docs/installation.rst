@@ -47,5 +47,5 @@ Once you have a copy of the source, you can install it with:
     $ python setup.py install
 
 
-.. _Github repo: https://github.com/gasslion/ticktick-python
+.. _Github repo: https://github.com/gasslion/ticktick
 .. _tarball: https://github.com/gasslion/ticktick-python/tarball/master
