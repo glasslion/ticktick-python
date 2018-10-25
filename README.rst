@@ -26,7 +26,11 @@ Python API for TickTick
 Features
 --------
 
-* TODO
+* Add task
+* Delete task
+* Query completed and uncompleted task
+* Nice text representation for task 
+
 
 Credits
 -------
