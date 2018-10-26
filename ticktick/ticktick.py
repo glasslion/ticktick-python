@@ -28,11 +28,11 @@ class TickTask(Dict):
         if items:
             self.subtasks = [TickTask(item) for item in items]
 
-    def text_view(self, show_list=False, show_subs=True):
+    def text_view(self, show_list=False, show_subs=True, margin=None):
         TAG = '🏷'
         COMPLETED = '✔'
         UNCOMPLETED = '❏'
-        MARGIN = '\t\t'
+        MARGIN = margin if margin is None else '   '
 
         text = '{state} {title}'.format(
             state=COMPLETED if self.is_completed else UNCOMPLETED,
