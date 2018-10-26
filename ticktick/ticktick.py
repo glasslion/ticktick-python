@@ -32,7 +32,7 @@ class TickTask(Dict):
         TAG = '🏷'
         COMPLETED = '✔'
         UNCOMPLETED = '❏'
-        MARGIN = '   '
+        MARGIN = '\t\t'
 
         text = '{state} {title}'.format(
             state=COMPLETED if self.is_completed else UNCOMPLETED,
